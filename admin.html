@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guess the Person - Admin Panel</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .admin-container { max-width: 650px; }
+        .admin-input {
+            display:block; width:100%; box-sizing:border-box;
+            padding:14px 16px; margin:10px 0;
+            border:2px solid #aaa; border-radius:10px; font-size:16px;
+        }
+        .admin-button {
+            width:100%; padding:13px 18px; margin-top:8px;
+            border:none; border-radius:10px; background:#222; color:white;
+            font-size:16px; font-weight:bold; cursor:pointer;
+        }
+        .admin-button:hover { background:#444; }
+        .command-help {
+            background:#f5f5f5; border-radius:12px; padding:15px;
+            margin:18px 0; line-height:1.8; text-align:left;
+        }
+        .command-input { font-family:Consolas, monospace; }
+        #admin-result {
+            min-height:28px; margin-top:16px; font-weight:bold;
+            white-space:pre-wrap;
+        }
+        .danger { color:#ea4335; }
+        .success { color:#35a853; }
+    </style>
+</head>
+<body>
+
+<div id="login-screen" class="quiz-container admin-container">
+    <h1>Admin Panel</h1>
+    <p>Sign in with your Supabase admin account.</p>
+
+    <input type="email" id="admin-email" class="admin-input"
+           placeholder="Admin email" autocomplete="username">
+
+    <input type="password" id="admin-password" class="admin-input"
+           placeholder="Admin password" autocomplete="current-password">
+
+    <button id="login-button" class="admin-button">Sign In</button>
+    <p id="login-result"></p>
+    <button id="back-button" class="admin-button">Back to Quiz</button>
+</div>
+
+<div id="admin-panel" class="quiz-container admin-container" style="display:none;">
+    <h1>Admin Panel</h1>
+
+    <div class="command-help">
+        <strong>Commands:</strong><br>
+        <strong>Commands:</strong><br><br>
+
+        <code>/player/ /allow-replay/</code><br>
+        <small>Allows one additional game.</small><br><br>
+
+        <code>/player/ /exception/</code><br>
+        <small>Allows the player to play unlimited times.</small><br><br>
+
+        <code>/player/ /exception/ /remove/</code><br>
+        <small>Removes the unlimited-play permission.</small><br><br>
+
+        <code>/player/ /remove-score/</code><br>
+        <small>Removes the player's scores.</small><br><br>
+
+        <code>/player/ /status/</code><br>
+        <small>Checks the player's status.</small><br><br>
+
+        <code>/all/ /allow-replay/</code><br>
+        <small>Allows one additional game for everyone.</small><br><br>
+
+        <code>/all/ /exception/</code><br>
+        <small>Gives unlimited games to everyone.</small><br><br>
+
+        <code>/all/ /exception/ /remove/</code><br>
+        <small>Removes unlimited-play permission from everyone.</small><br><br>
+
+        <code>/all/ /remove-score/</code><br>
+        <small>Removes all scores.</small><br><br>
+
+        <code>/all/ /reset/</code><br>
+        <small>Resets all player statuses.</small>
+    </div>
+
+    <input type="text" id="command-input" class="admin-input command-input"
+           placeholder="/player-name/ /function/" autocomplete="off">
+
+    <button id="run-command-button" class="admin-button">Run Command</button>
+    <div id="admin-result"></div>
+
+    <button id="logout-button" class="admin-button">Sign Out</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://uyvgkughmyofknhmuckh.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY =
+    "sb_publishable_-PnsghRQz6LtKCBTm1OpHA_Pm4xGSQv";
+const EDGE_FUNCTION_URL =
+    `${SUPABASE_URL}/functions/v1/admin-control`;
+
+const supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY
+);
+
+const loginScreen = document.getElementById("login-screen");
+const adminPanel = document.getElementById("admin-panel");
+const emailInput = document.getElementById("admin-email");
+const passwordInput = document.getElementById("admin-password");
+const loginButton = document.getElementById("login-button");
+const loginResult = document.getElementById("login-result");
+const commandInput = document.getElementById("command-input");
+const runButton = document.getElementById("run-command-button");
+const result = document.getElementById("admin-result");
+
+function setResult(message, type = "") {
+    result.textContent = message;
+    result.className = type;
+}
+
+function parseCommand(text) {
+    const match = text.trim().match(
+        /^\/([^/]+)\/\s+\/([^/]+)\/(?:\s+\/([^/]+)\/)?$/
+    );
+
+    if (!match) return null;
+
+    return {
+        name: match[1].trim(),
+        command: match[2].trim().toLowerCase(),
+        extra: match[3]
+            ? match[3].trim().toLowerCase()
+            : null
+    };
+}
+
+async function login() {
+    loginButton.disabled = true;
+    loginResult.textContent = "Signing in...";
+
+    const { data, error } =
+        await supabaseClient.auth.signInWithPassword({
+            email: emailInput.value.trim(),
+            password: passwordInput.value
+        });
+
+    loginButton.disabled = false;
+
+    if (error || !data.user) {
+        loginResult.textContent =
+            "Sign in failed. Check your email and password.";
+        loginResult.className = "danger";
+        return;
+    }
+
+    const { data: adminRow, error: adminError } =
+        await supabaseClient
+            .from("admin_users")
+            .select("user_id")
+            .eq("user_id", data.user.id)
+            .maybeSingle();
+
+    if (adminError || !adminRow) {
+        await supabaseClient.auth.signOut();
+        loginResult.textContent = "This account is not an admin.";
+        loginResult.className = "danger";
+        return;
+    }
+
+    loginResult.textContent = "";
+    passwordInput.value = "";
+    loginScreen.style.display = "none";
+    adminPanel.style.display = "block";
+    commandInput.focus();
+}
+
+async function runCommand() {
+    const parsed = parseCommand(commandInput.value);
+
+    if (!parsed) {
+        setResult("Invalid format. Use: /player-name/ /function/", "danger");
+        return;
+    }
+
+    if (parsed.command === "remove-score" ||
+        parsed.command === "reset") {
+        if (!confirm(
+            `Run /${parsed.name}/ /${parsed.command}/ ?`
+        )) return;
+    }
+
+    const { data: sessionData } =
+        await supabaseClient.auth.getSession();
+
+    const token = sessionData?.session?.access_token;
+
+    if (!token) {
+        setResult("Your admin session has expired.", "danger");
+        return;
+    }
+
+    setResult("Running command...");
+
+    try {
+        const response = await fetch(EDGE_FUNCTION_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                action: "admin-command",
+                name: parsed.name,
+                command: parsed.command,
+                extra: parsed.extra
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Command failed.");
+        }
+
+        setResult(data.message || "Command completed.", "success");
+        commandInput.value = "";
+    } catch (error) {
+        setResult(error.message, "danger");
+    }
+}
+
+loginButton.addEventListener("click", login);
+passwordInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") login();
+});
+runButton.addEventListener("click", runCommand);
+commandInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") runCommand();
+});
+
+document.getElementById("logout-button").addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    adminPanel.style.display = "none";
+    loginScreen.style.display = "block";
+    setResult("");
+});
+
+document.getElementById("back-button").addEventListener("click", () => {
+    window.location.href = "index.html";
+});
+</script>
+</body>
+</html>

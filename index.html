@@ -1,0 +1,87 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Guess the Young Teacher</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        .site-credit {
+            position: fixed;
+            bottom: 10px;
+            left: 0;
+            right: 0;
+            width: 100%;
+            text-align: center;
+            margin: 0;
+            font-size: 14px;
+            color: #777;
+        }
+
+        .site-credit span {
+            font-weight: bold;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <!-- START SCREEN -->
+    <div id="start-screen" class="quiz-container start-screen">
+        <h1>Guess the Young Teacher</h1>
+        <p class="name-label">Enter your name to start:</p>
+
+        <input type="text" id="player-name" class="name-input"
+               placeholder="Enter your name" maxlength="30" autocomplete="off">
+
+        <button id="start-button" class="start-button" disabled>
+            Start Game
+        </button>
+        <p id="play-status-message" class="play-status-message"></p>
+    </div>
+
+    <!-- QUIZ SCREEN -->
+    <div id="quiz-screen" class="quiz-container" style="display: none;">
+        <h1>Guess the Young Teacher</h1>
+
+        <div class="score">
+            Score: <span id="score">0</span>
+        </div>
+
+        <div class="question-number">
+            Question <span id="question-number">1 / 10</span>
+        </div>
+
+        <div class="photo-container">
+            <img id="person-image" src="" alt="Guess the Young Teacher">
+        </div>
+
+        <h2>Who is this teacher?</h2>
+
+        <div id="options" class="options"></div>
+        <div id="result"></div>
+
+        <button id="next-button">Next Question</button>
+    </div>
+
+    <!-- LEADERBOARD SCREEN -->
+    <div id="leaderboard-screen" class="quiz-container leaderboard-screen" style="display: none;">
+        <h1>Leaderboard</h1><div id="final-score"></div>
+        <div id="leaderboard-loading">Loading leaderboard...</div>
+        <ol id="leaderboard"></ol>
+
+        <button id="play-again-button" class="start-button enabled">
+            Play Again
+        </button>
+    </div>
+
+    <p class="site-credit">this website was created by <span>I. Roni Atchut of class X B</span></p>
+    <script src="script.js"></script>
+</body>
+</html>
